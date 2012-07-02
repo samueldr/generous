@@ -1,19 +1,22 @@
 #!/usr/bin/env ruby
 
-require 'getoptlong'
+require 'optparse'
+require 'ostruct'
 require 'pp'
-
 require 'yaml'
 
+# For globmask
 require_relative 'classes/dir'
 
+# Project classes
 require_relative 'classes/artifacts'
 require_relative 'classes/project'
 require_relative 'classes/generators'
 
+# Small utility function to output the lovely banner.
 def showBanner
-	unless $noBanner
-		puts <<BANNER
+	return unless $options.show_banner
+	puts <<BANNER
    ____   ____   ____   ___________  ____  __ __  ______
   / ___\\_/ __ \\ /    \\_/ __ \\_  __ \\/  _ \\|  |  \\/  ___/
  / /_/  >  ___/|   |  \\  ___/|  | \\(  <_> )  |  /\\___ \\
@@ -21,66 +24,71 @@ def showBanner
 \\_____/      \\/     \\/     \\/   project generator    \\/
 
 BANNER
-	end
 end
 
+
+# Default values
+DEFAULT_PROJECT_FILE = "generous.project"
 
 # Default options
-DEFAULT_CONFIG_FILE = "generous.project"
-$noBanner           = false
-$configFile         = DEFAULT_CONFIG_FILE
-
-#TODO: HACK... READ PARAMETER...
-currentConfig       = 1
-
-# TODO: Migrate from GetoptLong to OptionParser!
-opts                = GetoptLong.new(
-	['--help', '-h', '-?', GetoptLong::NO_ARGUMENT],
-	['--config-file', GetoptLong::REQUIRED_ARGUMENT],
-	['--no-banner', GetoptLong::NO_ARGUMENT],
+$options = OpenStruct.new(
+	:show_banner    => true,
+	:project_file   => DEFAULT_PROJECT_FILE,
+	:current_config => 0,
 )
-opts.quiet          = true
 
+# TODO: Find a way to have generators add options to this.
 begin
-	opts.each do |opt, arg|
-		case opt
-			when '--no-banner'
-				$noBanner = true
-			when '--config-file'
-				$configFile = arg
-			when '--help'
-				showBanner
-				puts <<-HELP
-Usage : #{File.basename $PROGRAM_NAME} [OPTION]...
-Generates a project based on the configuration passed.
+	OptionParser.new do |opts|
+		opts.banner =  "Usage : #{File.basename $PROGRAM_NAME} [OPTION]..."
+		opts.separator "Generates a project based on the configuration passed."
 
-    --help | -h | -?      Shows this help.
-    --config-file <file>  Config file name, default: #{DEFAULT_CONFIG_FILE}
+		opts.separator ""
+		opts.separator "Global options"
 
-#TODO
-    --list-generators     Prints a list of available generators
-    --generator <name>    Sets the generator to use
-
-				HELP
-				exit
+		opts.on("-h", "--help", "Shows this help.") do
+			showBanner
+			puts opts
+			exit
 		end
-	end
-rescue GetoptLong::Error => e
-	$stderr.puts e.message
+		opts.on("--no-banner", "Do not output the ASCII art banner.") do
+			$options.show_banner = false
+		end
+
+		opts.separator ""
+		opts.separator "Project generation options"
+		opts.on("--project-file", "=FILENAME", "Project file to use.", "Default: #{DEFAULT_PROJECT_FILE}") do |file|
+			$options.project_file = file
+		end
+		opts.on("-c","--config","=CONFIGS", "The configuration to use when outputting.",
+		                                    "Defaults to the first one.") do |config|
+			$options.current_config = config
+		end
+
+		opts.separator ""
+		opts.separator "Generator options"
+		#TODO --list-generators
+		#opts.on("--list-generators", "Prints a list of available generators.")
+		#TODO --generator
+		#opts.on("-g","--generator","=GENERATOR"))
+
+	end.parse!
+rescue OptionParser::InvalidOption => e
+	$stderr.puts "Error while parsing command-line input."
+	$stderr.puts e.message.capitalize!
 	exit 1
 end
-
-# This will show the banner.
+## This will show the banner.
 showBanner
 
 # TODO: Create a class to handle the configuration (parsing, validating...)
 # TODO: Check kwalify http://www.kuwata-lab.com/kwalify/
 begin
-	projectConfigFile = YAML::load(File.open($configFile))
+	projectConfigFile = YAML::load(File.open($options.project_file))
 rescue YAML::SyntaxError => e
 	$stderr.puts "Error while analyzing YAML configuration."
 	$stderr.puts e.message
-	$stderr.puts "In file #{$configFile}"
+	$stderr.puts "In file #{$options.project_file}"
 	exit 1
 rescue Errno::ENOENT => e
 	# When the file does not exist.
@@ -94,36 +102,51 @@ project = Project.new projectConfigFile["name"];
 # TODO: Handle multiple levels of includes, aka recursion
 # TODO: Handle circular references as errors while recursing.
 # This part handles merging configurations together. The current configuration is merged.
-if projectConfigFile["configurations"][currentConfig].has_key? "include"
+begin
 
-	temp = []
-
-	projectConfigFile["configurations"][currentConfig]["include"].each do |included|
-		temp = projectConfigFile["configurations"][currentConfig].merge included do |k, old, new|
-			case k
-				#When merging, we will always keep the original name.
-				when "name"
-					old
-				when "artifacts"
-					old.merge new do |oldkey, oldArtifact, newArtifact|
-						oldArtifact.concat new[oldkey]
-					end
-				else
-					$stderr.puts "I don't know how to merge these properties...'"
-					$stderr.puts "TODO: Make this a warning and find a middle ground for merging..."
-					$stderr.puts
-					$stderr.puts "====>" + k
-					$stderr.puts "==old"
-					$stderr.puts old
-					$stderr.puts "==new"
-					$stderr.puts new
-			end
-		end
+	#TODO: Allow usage of a config name
+	begin
+		config = Integer($options.current_config)
+	rescue ArgumentError => e
+		$stderr.puts "Error while parsing string to integer."
+		$stderr.puts e.message
+		$stderr.puts ""
+		$stderr.puts "TODO: Allow usage of a config name."
+		exit 5
 	end
 
-	temp.delete "include"
 
-	projectConfigFile["configurations"][currentConfig] = temp
+	if projectConfigFile["configurations"][config].has_key? "include"
+
+		temp = []
+
+		projectConfigFile["configurations"][config]["include"].each do |included|
+			temp = projectConfigFile["configurations"][config].merge included do |k, old, new|
+				case k
+					#When merging, we will always keep the original name.
+					when "name"
+						old
+					when "artifacts"
+						old.merge new do |oldkey, oldArtifact, newArtifact|
+							oldArtifact.concat new[oldkey]
+						end
+					else
+						$stderr.puts "I don't know how to merge these properties...'"
+						$stderr.puts "TODO: Make this a warning and find a middle ground for merging..."
+						$stderr.puts
+						$stderr.puts "====>" + k
+						$stderr.puts "==old"
+						$stderr.puts old
+						$stderr.puts "==new"
+						$stderr.puts new
+				end
+			end
+		end
+
+		temp.delete "include"
+
+		projectConfigFile["configurations"][config] = temp
+	end
 end
 
 
@@ -137,7 +160,7 @@ end
 #TODO: Artifacts for include directories
 
 # Here I work out the artifacts.
-projectConfigFile["configurations"][currentConfig]["artifacts"].each do |artifactName, artifactValues|
+projectConfigFile["configurations"][config]["artifacts"].each do |artifactName, artifactValues|
 	unless Artifacts.const_defined? artifactName
 		raise "Unknown artifact type: #{artifactName}"
 	end
@@ -163,19 +186,7 @@ end
 
 
 #TODO: Add means to pick a generator
-
-Generators::DumbScript.generate ""
-
-#project.artifacts.each do |art|
-#	if art.is_a? Artifacts::FileBasedArtifact
-#		puts art.class.name + " : " + art.fileName
-#	elsif art.is_a? Artifacts::CompilerConfigurationArtifacts
-#		puts art.class.name + " : " + art.value
-#	else
-#		puts art.class.name + " : UNHANDLED"
-#	end
-#end
-
+Generators::DumbScript.generate project
 
 puts "-----"
 puts "Done."
