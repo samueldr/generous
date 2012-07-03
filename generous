@@ -27,6 +27,10 @@ BANNER
 end
 
 
+###############################################################################
+# Options and parameters handling                                             #
+###############################################################################
+
 # Default values
 DEFAULT_PROJECT_FILE = "generous.project"
 
@@ -35,6 +39,7 @@ $options = OpenStruct.new(
 	:show_banner    => true,
 	:project_file   => DEFAULT_PROJECT_FILE,
 	:current_config => 0,
+	:generator      => nil
 )
 
 # TODO: Find a way to have generators add options to this.
@@ -67,10 +72,17 @@ begin
 
 		opts.separator ""
 		opts.separator "Generator options"
-		#TODO --list-generators
-		#opts.on("--list-generators", "Prints a list of available generators.")
-		#TODO --generator
-		#opts.on("-g","--generator","=GENERATOR"))
+		opts.on("--list-generators", "Prints a list of available generators.") do
+			puts "List of available generators:"
+			Generators.list_classes.each do |g|
+				puts "  #{g}"
+			end
+			exit 0
+		end
+
+		opts.on("-g","--generator","=GENERATOR") do |generatorName|
+			$options.generator = Generators.get_generator generatorName
+		end
 
 	end.parse!
 rescue OptionParser::InvalidOption => e
@@ -80,6 +92,11 @@ rescue OptionParser::InvalidOption => e
 end
 ## This will show the banner.
 showBanner
+
+
+###############################################################################
+# Project file parsing                                                        #
+###############################################################################
 
 # TODO: Create a class to handle the configuration (parsing, validating...)
 # TODO: Check kwalify http://www.kuwata-lab.com/kwalify/
@@ -149,6 +166,9 @@ begin
 	end
 end
 
+###############################################################################
+# Artifacts handling                                                          #
+###############################################################################
 
 #TODO: Check other parameters passing in Artifacts... Right now it's a dumb array with [0] being filename, [1] being mask. When not a dumb array (thus, a string) it is converted in that format...
 #The first one is technically the default one.
@@ -185,8 +205,14 @@ projectConfigFile["configurations"][config]["artifacts"].each do |artifactName, 
 end
 
 
-#TODO: Add means to pick a generator
-Generators::DumbScript.generate project
+unless $options.generator
+	$stderr.puts "A generator has not been selected."
+	$stderr.puts "Please select a generator."
+	exit 1
+end
+puts "Generating a project using #{$options.generator} generator."
+
+$options.generator.generate project
 
 puts "-----"
 puts "Done."
