@@ -1,6 +1,10 @@
 module Generators
 	#TODO: Move this elsewhere?
-	@base_dir = File.dirname(File.readlink($0)) + "/generators/"
+	if File.symlink?($0)
+		@base_dir = File.dirname(File.readlink($0)) + "/generators/"
+	else
+		@base_dir = File.dirname($0) + "/generators/"
+	end
 
 	def self.get_generator generator_name
 		#TODO: Read a list of available paths
