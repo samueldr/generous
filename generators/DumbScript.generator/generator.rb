@@ -1,6 +1,9 @@
 module Generators
 	class DumbScript
 
+		def self.list_options
+			puts "No options available."
+		end
 		def self.generate project
 			unless project.is_a? Project
 				raise "The generator needs a Project, got a #{project.class}."

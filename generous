@@ -80,10 +80,20 @@ begin
 			exit 0
 		end
 
-		opts.on("-g","--generator","=GENERATOR") do |generatorName|
+		opts.on("-g","--generator","=GENERATOR", "The generator to use.") do |generatorName|
 			$options.generator = Generators.get_generator generatorName
 		end
 
+		opts.on("--list-generator-options", "Lists the options of the generator.") do
+			unless $options.generator
+				raise "The generator has to be selected before listing its options."
+			end
+			unless $options.generator.respond_to? "list_options"
+				raise "The generator has no way to list its options."
+			end
+			$options.generator.list_options
+			exit 0
+		end
 	end.parse!
 rescue OptionParser::InvalidOption => e
 	$stderr.puts "Error while parsing command-line input."
