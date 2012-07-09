@@ -4,7 +4,16 @@ module Generators
 		def self.list_options
 			puts "No options available."
 		end
-		def self.generate project
+
+		def initialize
+			#If I were intelligent, I would parse the left options in $ARGV.
+			#I have the freedom to parse those with whatever I like.
+			#Do not that for inclusion in the main generous tree, you will need to
+			#parse your options with something already available, no additional
+			#libraries needed.
+		end
+
+		def generate project
 			unless project.is_a? Project
 				raise "The generator needs a Project, got a #{project.class}."
 			end

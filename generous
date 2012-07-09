@@ -222,7 +222,7 @@ unless $options.generator
 end
 puts "Generating a project using #{$options.generator} generator."
 
-$options.generator.generate project
+$options.generator.new.generate project
 
 puts "-----"
 puts "Done."
