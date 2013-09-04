@@ -11,5 +11,6 @@ def self.globmask(glob, excludeMasks)
 		Dir.glob(glob).select do |file|
 			! file.split("/").any? {|part| excludeMasks.include? part}
 		end
-	end
+end
+
 end

@@ -32,7 +32,7 @@ module Generators
 					elsif art.is_a? Artifacts::Header
 						headerFiles << art.fileName
 					end
-				elsif art.is_a? Artifacts::CompilerConfigurationArtifacts
+				elsif art.is_a? Artifacts::CompilerConfigurationArtifact
 					if art.is_a? Artifacts::Define
 						defines << art.value
 					elsif art.is_a? Artifacts::Libraries
@@ -40,8 +40,6 @@ module Generators
 					elsif art.is_a? Artifacts::IncludePaths
 						includeDirectories << art.value
 					end
-				else
-					puts art.class.name + " : UNHANDLED"
 				end
 			end
 

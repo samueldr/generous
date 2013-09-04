@@ -6,22 +6,63 @@ module Artifacts
 
 	end
 
-	class FileBasedArtifact < Artifact
-		attr_reader :fileName
 
-		def initialize(name)
-			@fileName = name
+	class ScriptArtifact < Artifact
+		attr_reader :script
+		def initialize(script)
+			@script = script
 		end
 	end
 
-	class Cpp < FileBasedArtifact
+	class PreGenerousScript < ScriptArtifact
+
+	end
+
+	class Option < Artifact
+		attr_reader :option, :defaultValue, :description, :booleanOption
+
+		def initialize(option)
+			@option = option[0]
+			@description = option[1]
+			if option[2]
+				@defaultValue = option[2]
+				@booleanOption = false
+			else
+				@defaultValue = false
+				@booleanOption = true
+			end
+		end
+	end
+
+	class FileBasedArtifact < Artifact
+		attr_reader :fileName, :originalFileName
+
+		def initialize(name, originalFileName)
+			@fileName = name
+			@originalFileName = originalFileName
+		end
+	end
+
+	class NativeCompilableArtifact < FileBasedArtifact
+		def objectFileName
+			temp  = @fileName
+			temp = temp.split '/'
+			temp = temp.last.split '.'
+			temp[1] = 'o'
+			temp.join '.'
+		end
+	end
+
+	class Cpp < NativeCompilableArtifact
 
 	end
 	class Header < FileBasedArtifact
 
 	end
 
-	class CompilerConfigurationArtifacts < Artifact
+
+
+	class CompilerConfigurationArtifact < Artifact
 		attr_reader :value
 
 		def initialize(value)
@@ -29,7 +70,86 @@ module Artifacts
 		end
 	end
 
-	class Define < CompilerConfigurationArtifacts
+	class Define < CompilerConfigurationArtifact
+		attr_reader :key
+		def initialize(value)
+		if value.is_a? Array
+			@key = value[0]
+			@value = value[1]
+		else
+			@key = value
+			@value = nil
+
+		end
+		end
+
+		def defineString
+			defineString = ""
+			defineString += "-D#{@key}"
+			defineString += "=#{@value}" if @value
+			defineString
+		end
+	end
+	class FileBasedCompilerConfigurationArtifact < CompilerConfigurationArtifact
+		attr_reader :fileName, :originalFileName
+		def initialize(name, originalFileName)
+			super(name)
+			@fileName = name
+			@originalFileName = originalFileName
+		end
 	end
 
+  class IncludesPath < FileBasedCompilerConfigurationArtifact
+  def includeString
+		includeSring = ""
+		includeSring += "-I#{@value}"
+		includeSring
+	end
+	end
+
+
+
+	class LibrariesPath < FileBasedCompilerConfigurationArtifact
+		def librariesPathString
+			librariesPathString = ""
+			librariesPathString += "-L#{@value}"
+			librariesPathString
+		end
+	end
+
+	class CFLAGS < CompilerConfigurationArtifact
+
+	end
+
+	class CXXFLAGS < CompilerConfigurationArtifact
+
+	end
+
+	class LDFLAGS < CompilerConfigurationArtifact
+
+	end
+
+	class Framework < CompilerConfigurationArtifact
+		def frameworkString
+			frameworkString = ""
+			frameworkString += "-framework #{@value}"
+			frameworkString
+		end
+
+		def fileName
+			"#{@value}.framework"
+		end
+	end
+
+  class Library < CompilerConfigurationArtifact
+		def libraryString
+			libraryString = ""
+			libraryString += "-l#{@value}"
+			libraryString
+		end
+
+		def fileName
+			"lib#{@value}.a"
+		end
+  end
 end
