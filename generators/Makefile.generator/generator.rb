@@ -87,7 +87,7 @@ module Generators
 				space file, 2
 
 				file.puts 'clean:'
-				file.puts "	rm -rf #{project.buildDir}"
+				file.puts "	rm -rf \"#{project.buildDir}\""
 
 				space file, 2
 
@@ -96,7 +96,7 @@ module Generators
 					when "library-static"
 						file.puts "	$(AR) -rcs #{project.buildDir}/#{project.outputFile} $(addprefix #{project.objectDir}/,$(OBJECT_FILES))"
 					else
-						file.puts "	$(CXX) $(LDFLAGS) -o #{project.buildDir}/#{project.outputFile} $(LIBRARIES_PATHS) $(LIBRARIES) $(addprefix #{project.objectDir}/,$(OBJECT_FILES))"
+						file.puts "	$(CXX) $(LDFLAGS) -o #{project.buildDir}/#{project.outputFile} $(LIBRARIES_PATHS) $(addprefix #{project.objectDir}/,$(OBJECT_FILES)) $(LIBRARIES)"
 				end
 
 
@@ -104,7 +104,7 @@ module Generators
 				space file, 2
 
 				file.puts "#{project.objectDir}:"
-				file.puts "	mkdir -p #{project.objectDir}"
+				file.puts "	mkdir -p \"#{project.objectDir}\""
 
 				space file, 2
 
@@ -112,7 +112,7 @@ module Generators
 				headerFiles.each do |f|
 				file.puts "#{project.buildDir}/#{f.originalFileName}: #{f.fileName}"
 				headerDirectory = File.dirname f.originalFileName
-					file.puts "	mkdir -p #{project.buildDir}/#{headerDirectory} && cp \"$<\" \"$@\""
+					file.puts "	mkdir -p \"#{project.buildDir}/#{headerDirectory}\" && cp \"$<\" \"$@\""
 					space file, 1
 
 				end

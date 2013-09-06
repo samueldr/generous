@@ -130,7 +130,7 @@ $pathToProjectRoot = ''
 
 # TODO: Find a way to have generators add options to this.
 	@optionParser = OptionParser.new do |opts|
-		opts.banner =  "Usage : #{File.basename $PROGRAM_NAME} [OPTION] [-- [GENRATOR OPTION]]"
+		opts.banner =  "Usage : #{File.basename $PROGRAM_NAME} [OPTION] [-- [GENRATOR OPTION]] [-- [PROJECT OPTION]]"
 		opts.separator 'Generates a project based on the configuration passed.'
 
 		opts.separator ''
@@ -212,7 +212,7 @@ rescue YAML::SyntaxError => e
 	$stderr.puts e.message
 	$stderr.puts "In file #{$options.project_file}"
 	exit 1
-rescue Errno::ENOENT => e
+rcue Errno::ENOENT => e
 	# When the file does not exist.
 	$stderr.puts e.message
 	exit 1
@@ -229,9 +229,10 @@ configFile.each do |projectName, projectConfigFile|
 			configName =  projectConfigFile['configurations'].first[0]
 		end
 		currentConfig = projectConfigFile['configurations'][configName]
+		project.configurationName = configName
 
 
-		#set the project type
+	#set the project type
 	if currentConfig.has_key? 'type'
 		project.type = currentConfig['type']
 	elsif projectConfigFile.has_key? 'type'
@@ -260,7 +261,7 @@ configFile.each do |projectName, projectConfigFile|
 			when "library-static"
 				project.outputPrefix = 'lib'
 			else
-				project.outputPrefix = ''
+					project.outputPrefix = ''
 		end
 	end
 
@@ -270,10 +271,22 @@ configFile.each do |projectName, projectConfigFile|
 		project.outputExtension = currentConfig['outputExtension']
 		elsif projectConfigFile.has_key? 'outputExtension'
 		project.outputExtension = projectConfigFile['outputExtension']
-	else
+		else
 		case project.type
 			when 'library-static'
 				project.outputExtension = 'a'
+			when 'application-cli'
+				if OS.windows?
+					project.outputExtension = 'exe'
+				else
+					project.outputExtension = ''
+				end
+			else
+				if OS.windows?
+					project.outputExtension = 'exe'
+				else
+					project.outputExtension = ''
+				end
 		end
 	end
 
@@ -360,7 +373,6 @@ configFile.each do |projectName, projectConfigFile|
 	$options.generator.generate project
 
 end
-
 
 
 
