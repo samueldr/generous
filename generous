@@ -116,7 +116,6 @@ end
 
 # Default values
 DEFAULT_PROJECT_FILE = "generous.project"
-
 # Default options
 $options = OpenStruct.new(
 	:show_banner    => true,
@@ -154,7 +153,7 @@ $pathToProjectRoot = ''
 			$pathToProjectRoot += '/' if $pathToProjectRoot != ''
 		end
 		opts.on('-c','--config','=CONFIGS', 'The configuration to use when outputting.',
-		                                    'Defaults to the first one.') do |config|
+		                                    'Defaults to the one specified by the defaultConfiguration or the first one.') do |config|
 			$options.current_config = config
 		end
 
@@ -172,7 +171,7 @@ $pathToProjectRoot = ''
 			$options.list_config_options = true
 		end
 
-		opts.on('-g','--generator','=GENERATOR', 'The generator to use.') do |generatorName|
+		opts.on('-g','--generator','=GENERATOR', 'The generator to use.', 'Defaults to Makefile.') do |generatorName|
 			$options.generator = Generators.get_generator generatorName
 			$options.generator = $options.generator.new
 		end
@@ -190,6 +189,7 @@ $pathToProjectRoot = ''
 	end
 
 @optionParser.permute!
+$options.generator = Generators.get_generator('Makefile').new if $options.generator == nil
 
 $options.generator.permute! if 	$options.generator
 
@@ -225,6 +225,8 @@ configFile.each do |projectName, projectConfigFile|
 		#Setting the current config
 		if $options.current_config
 			configName = $options.current_config
+		elsif projectConfigFile['defaultConfiguration']
+			configName = projectConfigFile['defaultConfiguration']
 		else
 			configName =  projectConfigFile['configurations'].first[0]
 		end
