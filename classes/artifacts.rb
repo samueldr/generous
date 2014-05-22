@@ -6,6 +6,9 @@ module Artifacts
 
 	end
 
+	class GeneratorArtifact < Artifact
+
+	end
 
 	class ScriptArtifact < Artifact
 		attr_reader :script
@@ -35,11 +38,11 @@ module Artifacts
 	end
 
 	class FileBasedArtifact < Artifact
-		attr_reader :fileName, :originalFileName
+		attr_reader :fileName
 
-		def initialize(name, originalFileName)
+		def initialize(name)
 			@fileName = name
-			@originalFileName = originalFileName
+			#@originalFileName = originalFileName
 		end
 	end
 
@@ -51,6 +54,10 @@ module Artifacts
 			temp[1] = 'o'
 			temp.join '.'
 		end
+	end
+
+	class C < NativeCompilableArtifact
+
 	end
 
 	class Cpp < NativeCompilableArtifact
@@ -91,11 +98,11 @@ module Artifacts
 		end
 	end
 	class FileBasedCompilerConfigurationArtifact < CompilerConfigurationArtifact
-		attr_reader :fileName, :originalFileName
-		def initialize(name, originalFileName)
+		attr_reader :fileName
+		def initialize(name)
 			super(name)
 			@fileName = name
-			@originalFileName = originalFileName
+			#@originalFileName = originalFileName
 		end
 	end
 
@@ -110,9 +117,10 @@ module Artifacts
 
 
 	class LibrariesPath < FileBasedCompilerConfigurationArtifact
-		def librariesPathString
+		def librariesPathString prefix = '.'
+			#prefix ||= '.'
 			librariesPathString = ""
-			librariesPathString += "-L#{@value}"
+			librariesPathString += "-L#{prefix}/#{@value}"
 			librariesPathString
 		end
 	end

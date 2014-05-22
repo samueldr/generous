@@ -28,46 +28,67 @@ def showBanner
 BANNER
 end
 
+@config_included = []
 
-def includeConfig config
-	if config.has_key? 'include'
-		temp =  {}
-		config['include'].each do |included|
+def includeConfig configName, configurations
+	config  = configurations[configName]
+		if config.has_key? 'include'
+			temp =  {}
+			config['include'].each do |includedName|
 
-		if  included.is_a? Array
-			 next if not eval(included[1])
-			 included = included[0]
-		end
-		included = includeConfig included	 if included.has_key? 'include'
-
-			temp = config.merge included do |k, old, new|
-				case k
-					#When merging, we will always keep the original name.
-					when 'name'
-						old
-					when 'artifacts'
-						old.merge new do |oldkey, oldArtifact, newArtifact|
-							oldArtifact.concat new[oldkey]
-						end
-					when 'include'
-
-					else
-						$stderr.puts "I don't know how to merge these properties...'"
-						$stderr.puts 'TODO: Make this a warning and find a middle ground for merging...'
-						$stderr.puts
-						$stderr.puts '====>' + k
-						$stderr.puts '==old'
-						$stderr.puts old
-						$stderr.puts '==new'
-						$stderr.puts new
-				end
+			if  includedName.is_a? Array
+				 next if not eval(includedName[1])
+				 includedName = includedName[0]
 			end
-			config = temp
-		end
-		temp.delete 'include'
+			included = configurations[includedName]
+			included = includeConfig includedName, configurations	 if included.has_key? 'include'
+			if not @config_included.include? includedName then
+				@config_included << includedName
 
-		#config = temp
-	end
+				temp = config.merge included do |k, old, new|
+						case k
+							#When merging, we will always keep the original name.
+							when 'name'
+								old
+							when 'artifacts', 'postScriptArtifacts'
+								old.merge new do |oldkey, oldArtifact, newArtifact|
+									if oldArtifact.is_a? Hash
+										newArtifact.each do |key, value|
+											if oldArtifact.has_key? key then
+												oldArtifact[key].concat value
+											else
+												oldArtifact[key] = value
+											end
+										end
+										oldArtifact
+									else
+										oldArtifact.concat newArtifact
+									end
+								end
+							when 'include'
+
+							else
+								old = $options.generator.merge_config k, old, new
+								if not old then
+									$stderr.puts "I don't know how to merge these properties...'"
+									$stderr.puts 'TODO: Make this a warning and find a middle ground for merging...'
+									$stderr.puts
+									$stderr.puts '====>' + k
+									$stderr.puts '==old'
+									$stderr.puts old
+									$stderr.puts '==new'
+									$stderr.puts new
+								end
+						end
+					end
+
+				config = temp
+				end
+				temp.delete 'include'
+			end
+
+			#config = temp
+		end
 	config
 end
 
@@ -86,16 +107,23 @@ def addArtifact artifactName, artifactValues, project
 		#TODO: Add a Artifacts::PathBase instead of checking for FileBasedArtifact and other path type artifact
 		if artifactType < Artifacts::FileBasedArtifact || artifactType < Artifacts::FileBasedCompilerConfigurationArtifact
 			# When using a simple string, create the right array.
-			if artifactValue.is_a? String
+			if artifactValue.is_a? String or not artifactValue[1] then
 				artifactValue = [artifactValue, []]
 			end
 			artifactValue[0] = ERB.new(artifactValue[0]).result(binding)
-			artifactValue[0] = "#{$pathToProjectRoot}#{artifactValue[0]}"
-			Dir.globmask(artifactValue[0], artifactValue[1]).each do |file|
-				originalPath = file.clone
-				originalPath.slice! "#{$pathToProjectRoot}"
-				project.add_artifact artifactType.new(file, originalPath)
+			if artifactValue[1].is_a? Array then
+				artifactValue[0] = "#{$pathToProjectRoot}#{artifactValue[0]}"
+				Dir.globmask(artifactValue[0], artifactValue[1]).each do |file|
+					#originalPath = file.clone
+					#originalPath.slice! "#{$pathToProjectRoot}"
+					project.add_artifact artifactType.new(file)
+				end
+			elsif artifactValue[1] then
+				project.add_artifact artifactType.new(artifactValue[0])
 			end
+		elsif artifactType < Artifacts::GeneratorArtifact
+			artifact = $options.generator.process_artifact artifactType, artifactValue
+			project.add_artifact artifact
 		else
 			if artifactValue.is_a? String
 			artifactValue = ERB.new(artifactValue).result(binding)
@@ -138,6 +166,9 @@ $pathToProjectRoot = ''
 		opts.on('-h', '--help', 'Shows this help.') do
 			showBanner
 			puts opts
+			if $options.generator.respond_to? 'list_options'
+				$options.generator.list_options
+			end
 			exit
 		end
 
@@ -176,16 +207,6 @@ $pathToProjectRoot = ''
 			$options.generator = $options.generator.new
 		end
 
-		opts.on('--list-generator-options', 'Lists the options of the generator.') do
-			unless $options.generator
-				raise 'The generator has to be selected before listing its options.'
-			end
-			unless $options.generator.respond_to? 'list_options'
-				raise 'The generator has no way to list its options.'
-			end
-			$options.generator.list_options
-			exit 0
-		end
 	end
 
 @optionParser.permute!
@@ -221,7 +242,7 @@ configFile.each do |projectName, projectConfigFile|
 
 	project = Project.new projectName
 
-		project.pathToProjectRoot = $pathToProjectRoot
+		#project.pathToProjectRoot = $pathToProjectRoot
 		#Setting the current config
 		if $options.current_config
 			configName = $options.current_config
@@ -232,6 +253,7 @@ configFile.each do |projectName, projectConfigFile|
 		end
 		currentConfig = projectConfigFile['configurations'][configName]
 		project.configurationName = configName
+		project.configurations = projectConfigFile['configurations']
 
 
 	#set the project type
@@ -321,14 +343,10 @@ configFile.each do |projectName, projectConfigFile|
 	#TODO: Read which configuration to use
 	#TODO: Configuration names (required?)
 
-	#TODO: Artifacts for DEFINES
-	#TODO: Artifacts for libraries linked
-	#TODO: Artifacts for include directories
-
 	# Here I work out the artifacts.
 
-	currentConfig = includeConfig currentConfig
-
+	currentConfig = includeConfig project.configurationName, project.configurations
+	project.currentConfig = currentConfig
 	if currentConfig['artifacts']
 	currentConfig['artifacts'].each do |artifactName, artifactValues|
 		addArtifact artifactName, artifactValues, project

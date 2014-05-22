@@ -24,6 +24,7 @@ module Generators
 			end
 
 			defines            = []
+			cFiles           = []
 			cppFiles           = []
 			headerFiles        = []
 			includeDirectories = []
@@ -34,6 +35,8 @@ module Generators
 				if art.is_a? Artifacts::FileBasedArtifact
 					if art.is_a? Artifacts::Cpp
 						cppFiles << art
+					elsif art.is_a? Artifacts::C
+							cFiles << art
 					elsif art.is_a? Artifacts::Header
 						headerFiles << art
 					end
@@ -62,17 +65,22 @@ module Generators
 				file.puts "LIBRARIES_PATHS = #{project.librariesPathsString}"
 
 				space file, 2
-				file.puts 'OBJECT_FILES = \\'
+				file.puts 'CPP_OBJECT_FILES = \\'
 			cppFiles.each do |f|
 				file.puts "#{f.objectFileName} \\"
 			end
 				space file, 1
 
+				file.puts 'C_OBJECT_FILES = \\'
+				cFiles.each do |f|
+					file.puts "#{f.objectFileName} \\"
+				end
+				space file, 1
 
 
 			file.puts 'HEADER_FILES = \\'
 			headerFiles.each do |f|
-				file.puts "#{f.originalFileName} \\"
+				file.puts "#{f.fileName} \\"
 			end
 
 				space file
@@ -87,20 +95,21 @@ module Generators
 				space file, 2
 
 				file.puts 'clean:'
-				file.puts "	rm -rf \"#{project.buildDir}\""
+				file.puts "	rm -rf #{project.buildDir}/#{project.outputFile}"
+				file.puts "	rm -rf #{project.objectDir}/*"
 
 				space file, 2
 
-				file.puts "#{project.buildDir}/#{project.outputFile}: #{project.objectDir} $(addprefix #{project.objectDir}/,$(OBJECT_FILES))"
+				file.puts "#{project.buildDir}/#{project.outputFile}: #{project.objectDir} $(addprefix #{project.objectDir}/,$(CPP_OBJECT_FILES)) $(addprefix #{project.objectDir}/,$(C_OBJECT_FILES))"
 				case project.type
 					when "library-static"
-						file.puts "	$(AR) -rcs #{project.buildDir}/#{project.outputFile} $(addprefix #{project.objectDir}/,$(OBJECT_FILES))"
+						file.puts "	$(AR) -rcs #{project.buildDir}/#{project.outputFile} $(addprefix #{project.objectDir}/,$(CPP_OBJECT_FILES)) $(addprefix #{project.objectDir}/,$(C_OBJECT_FILES))"
 					else
-						file.puts "	$(CXX) $(LDFLAGS) -o #{project.buildDir}/#{project.outputFile} $(LIBRARIES_PATHS) $(addprefix #{project.objectDir}/,$(OBJECT_FILES)) $(LIBRARIES)"
+						file.puts "	$(CXX) $(LDFLAGS) -o #{project.buildDir}/#{project.outputFile} $(LIBRARIES_PATHS) $(addprefix #{project.objectDir}/,$(CPP_OBJECT_FILES)) $(LIBRARIES) $(addprefix #{project.objectDir}/,$(C_OBJECT_FILES)) $(LIBRARIES)"
 				end
 
 
-				file.puts "all: #{project.objectDir} $(addprefix #{project.objectDir}/,$(OBJECT_FILES))"
+				file.puts "all: #{project.objectDir} $(addprefix #{project.objectDir}/,$(CPP_OBJECT_FILES))"
 				space file, 2
 
 				file.puts "#{project.objectDir}:"
@@ -110,8 +119,8 @@ module Generators
 
 
 				headerFiles.each do |f|
-				file.puts "#{project.buildDir}/#{f.originalFileName}: #{f.fileName}"
-				headerDirectory = File.dirname f.originalFileName
+				file.puts "#{project.buildDir}/#{f.fileName}: #{f.fileName}"
+				headerDirectory = File.dirname f.fileName
 					file.puts "	mkdir -p \"#{project.buildDir}/#{headerDirectory}\" && cp \"$<\" \"$@\""
 					space file, 1
 
@@ -125,7 +134,19 @@ module Generators
 				file.puts "	@echo \"-------- #{f.fileName}--------\""
 				file.puts buildCommand
 				space file, 2
-			end
+				end
+
+
+				cFiles.each do |f|
+					file.puts "#{project.objectDir}/#{f.objectFileName}: #{f.fileName}"
+					buildCommand = "	$(CC) \"$<\" $(CFLAGS) $(DEFINES) $(INCLUDES)"
+
+					buildCommand += " -c -o \"$@\""
+					file.puts "	@echo \"-------- #{f.fileName}--------\""
+					file.puts buildCommand
+					space file, 2
+				end
+
 			end
 
 		end

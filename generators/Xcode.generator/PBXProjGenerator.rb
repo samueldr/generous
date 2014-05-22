@@ -1,5 +1,6 @@
 require_relative "JsonPBXConverter.rb"
 require_relative "PBXProjObjectGenerator.rb"
+require_relative 'XcodeUUIDGenerator.rb'
 
 class PBXProjGenerator
   def initialize
@@ -189,6 +190,7 @@ class PBXProjGenerator
   def initGlobalConfigVar
     @projVariable[:globalConfig] = {}
     @projVariable[:globalConfig][@projVariable[:configNames][0]] = {
+=begin
         "ALWAYS_SEARCH_USER_PATHS" => "NO",
         "ARCHS" => "$(ARCHS_STANDARD_64_BIT)",
         "COPY_PHASE_STRIP" => "NO",
@@ -206,6 +208,7 @@ class PBXProjGenerator
         "MACOSX_DEPLOYMENT_TARGET" => "10.7",
         "ONLY_ACTIVE_ARCH" => "YES",
         "SDKROOT" => "macosx"
+=end
     }
   end
 
@@ -229,7 +232,7 @@ class PBXProjGenerator
     }
 
 
-    }
+
 
 
 

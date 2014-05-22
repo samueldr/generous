@@ -1,102 +1,57 @@
+require_relative 'PBXProjGenerator.rb'
+require 'FileUtils'
 module Generators
   class Xcode
 
-    def list_options
-      puts @parser
+		def self.list_options
+			puts "No options available."
 		end
 
-		def parse!
-			@parser.parse!
+		def initialize
+
+		end
+
+		def permute!
 		end
 
 
-    def initialize
-      #If I were intelligent, I would parse the left options in $ARGV.
-      #I have the freedom to parse those with whatever I like.
-      #Do not that for inclusion in the main generous tree, you will need to
-      #parse your options with something already available, no additional
-      #libraries needed.
-			@parser = OptionParser.new do |opts|
-
+		def generate project
+			unless project.is_a? Project
+				raise "The generator needs a Project, got a #{project.class}."
 			end
+
+			defines            = []
+			cppFiles           = []
+			headerFiles        = []
+			includeDirectories = []
+			libraries          = []
+
+			# Getting the structure in that form I want
+			project.artifacts.each do |art|
+				if art.is_a? Artifacts::FileBasedArtifact
+					if art.is_a? Artifacts::Cpp
+						cppFiles << art
+					elsif art.is_a? Artifacts::Header
+						headerFiles << art
+					end
+				elsif art.is_a? Artifacts::CompilerConfigurationArtifact
+					if art.is_a? Artifacts::Define
+						defines << art
+					elsif art.is_a? Artifacts::Library
+						libraries << art
+					elsif art.is_a? Artifacts::IncludesPath
+						includeDirectories << art.value
+					end
+				end
+			end
+
+
+			projGen = PBXProjGenerator.new
+			FileUtils.mkpath "#{project.buildDir}/#{project.name}.xcodeproj"
+			projGen.save "#{project.buildDir}/#{project.name}.xcodeproj/project.pbxproj"
+
+
 		end
-
-
-
-
-=begin
-    def generate project
-      unless project.is_a? Project
-        raise "The generator needs a Project, got a #{project.class}."
-      end
-
-      defines            = []
-      cppFiles           = []
-      headerFiles        = []
-      includeDirectories = []
-      libraries          = []
-
-      # Getting the structure in that form I want
-      project.artifacts.each do |art|
-        if art.is_a? Artifacts::FileBasedArtifact
-          if art.is_a? Artifacts::Cpp
-            cppFiles << art.fileName
-          elsif art.is_a? Artifacts::Header
-            headerFiles << art.fileName
-          end
-        elsif art.is_a? Artifacts::CompilerConfigurationArtifacts
-          if art.is_a? Artifacts::Define
-            defines << art.value
-          elsif art.is_a? Artifacts::Libraries
-            libraries << art.value
-          elsif art.is_a? Artifacts::IncludePaths
-            includeDirectories << art.value
-          end
-        else
-          puts art.class.name + " : UNHANDLED"
-        end
-      end
-
-      # Then outputting how I want this in the script.
-      outfiles = []
-
-      script_name = "#{project.name}_build_script.sh"
-
-      File.open(script_name, "w") do |file|
-        file.puts "#!/bin/bash -ue"
-        file.puts "mkdir -p build"
-        params = ""
-        defines.each do |d|
-          params << %/ -D"#{d}" /
-        end
-        includeDirectories.each do |i|
-          params << %/ -I"#{i}" /
-        end
-
-        i = 0
-
-        cppFiles.each do |f|
-          i       = i.next
-          outfile = "build/objs/#{f}.o"
-          outdir  = outfile.split "/"
-          outdir.pop
-          outdir = outdir.join "/"
-          file.puts "echo [#{i}/#{cppFiles.count}] #{f}"
-          file.puts %Q{mkdir -p #{outdir}}
-          file.puts %Q{c++ #{params} -o "#{outfile}" -c "#{f}" }
-          outfiles << outfile
-        end
-
-        libFileName = "lib" + project.name + ".a"
-
-        #TODO: Check what kind of target it outfile.puts...
-        file.puts "echo Linking..."
-        file.puts "ar cr build/libtemp.a #{outfiles.join(" ")}"
-      end
-
-    end
-  end
-=end
 
 	end
 end

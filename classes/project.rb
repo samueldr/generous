@@ -1,7 +1,7 @@
 class Project
 	attr_reader :name
 	attr_reader :artifacts, :defines, :cppFiles, :headerFiles, :includeDirectories, :library
-	attr_accessor :type, :buildDir, :objectDir, :outputPrefix, :outputName, :outputExtension, :options, :pathToProjectRoot, :configurationName
+	attr_accessor :type, :buildDir, :objectDir, :outputPrefix, :outputName, :outputExtension, :options, :pathToProjectRoot, :configurationName, :configurations, :currentConfig
 
 	def initialize(name)
 		@name = name
@@ -65,10 +65,10 @@ class Project
 		flags.rstrip
 	end
 
-	def librariesPathsString
+	def librariesPathsString prefix = '.'
 		librariesPathsString = ""
 		@librariesPath.each do |librariesPath|
-			librariesPathsString += "#{librariesPath.librariesPathString} "
+			librariesPathsString += "#{librariesPath.librariesPathString prefix} "
 		end
 		librariesPathsString.rstrip
 	end

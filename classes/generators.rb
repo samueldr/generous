@@ -39,7 +39,12 @@ module Generators
 
 			d = d[0..d.rindex(".")-1]
 
-			generators << d
+			generator = self.get_generator d
+			if defined? generator.shortDesc
+				generators << "#{d} -- #{generator.shortDesc}"
+			else
+				generators << d
+			end
 		end
 
 		generators
