@@ -349,7 +349,7 @@ configFile.each do |projectName, projectConfigFile|
 	project.currentConfig = currentConfig
 	if currentConfig['artifacts']
 	currentConfig['artifacts'].each do |artifactName, artifactValues|
-		addArtifact artifactName, artifactValues, project
+		addArtifact artifactName, artifactValues, project if not artifactValues.nil?
 	end
 
 
