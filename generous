@@ -28,6 +28,13 @@ def showBanner
 BANNER
 end
 
+
+def puts_banner text, col = 40, char = '*'
+  puts ''.rjust(col, char)
+  puts "*#{text.center(col -2 )}*"
+  puts ''.rjust(col, char)
+end
+
 @config_included = []
 
 def includeConfig configName, configurations
@@ -165,11 +172,12 @@ $pathToProjectRoot = ''
 
 		opts.on('-h', '--help', 'Shows this help.') do
 			showBanner
+      $options.show_banner = false
 			puts opts
 			if $options.generator.respond_to? 'list_options'
 				$options.generator.list_options
-			end
-			exit
+      end
+      $options.list_config_options = true
 		end
 
 			opts.on('--no-banner', 'Do not output the ASCII art banner.') do
@@ -242,6 +250,9 @@ configFile.each do |projectName, projectConfigFile|
 
 	project = Project.new projectName
 
+
+
+
 		#project.pathToProjectRoot = $pathToProjectRoot
 		#Setting the current config
 		if $options.current_config
@@ -255,6 +266,8 @@ configFile.each do |projectName, projectConfigFile|
 		project.configurationName = configName
 		project.configurations = projectConfigFile['configurations']
 
+  currentConfig = includeConfig project.configurationName, project.configurations
+  project.currentConfig = currentConfig
 
 	#set the project type
 	if currentConfig.has_key? 'type'
@@ -345,8 +358,7 @@ configFile.each do |projectName, projectConfigFile|
 
 	# Here I work out the artifacts.
 
-	currentConfig = includeConfig project.configurationName, project.configurations
-	project.currentConfig = currentConfig
+
 	if currentConfig['artifacts']
 	currentConfig['artifacts'].each do |artifactName, artifactValues|
 		addArtifact artifactName, artifactValues, project if not artifactValues.nil?
