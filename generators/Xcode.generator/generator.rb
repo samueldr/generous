@@ -1,5 +1,5 @@
 require_relative 'PBXProjGenerator.rb'
-require 'FileUtils'
+require 'fileutils'
 module Generators
   class Xcode
 
