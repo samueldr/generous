@@ -177,6 +177,8 @@ $options = OpenStruct.new(
 	:current_config => nil,
 	:generator      => nil,
 	:list_config_options => false,
+  :list_exported_config => false,
+  :list_all_config => false,
   :project_path => Dir.pwd
 )
 $pathToProjectRoot = ''
@@ -213,11 +215,23 @@ $pathToProjectRoot = ''
 		opts.on('-c','--config','=CONFIGS', 'The configuration to use when outputting.',
 		                                    'Defaults to the one specified by the defaultConfiguration or the first one.') do |config|
 			$options.current_config = config
-		end
+    end
+
+    opts.on('-C', '--list-config', 'Prints a list of exported configurations.') do
+      $options.list_exported_config = true
+      $options.show_banner = false
+
+    end
+
+    opts.on('--list-all-config', 'Prints a list of all configurations.') do
+      $options.list_all_config = true
+      $options.show_banner = false
+
+    end
 
 		opts.separator ''
 		opts.separator 'Generator options'
-		opts.on('--list-generators', 'Prints a list of available generators.') do
+		opts.on('-G', '--list-generators', 'Prints a list of available generators.') do
 			puts 'List of available generators:'
 			Generators.list_classes.each do |g|
 				puts "  #{g}"
@@ -376,6 +390,19 @@ configFile.each do |projectName, projectConfigFile|
     $stderr.puts "Error while parsing command-line input."
     $stderr.puts e.message.capitalize!
     exit 1
+  end
+
+  if $options.list_exported_config or $options.list_all_config then
+
+    if $options.list_exported_config then
+      puts 'List of exported configurations:'
+    else
+      puts 'List of all configurations:'
+    end
+    project.configurations.each do |configName, config|
+      puts configName if config['export'] or $options.list_all_config
+    end
+    exit 0
   end
 
   if $options.list_config_options
