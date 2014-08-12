@@ -1,7 +1,7 @@
 class Project
 	attr_reader :name
 	attr_reader :artifacts, :artifactsGroup #, :defines, :cppFiles, :headerFiles, :includeDirectories, :library
-	attr_accessor :type, :buildDir, :objectDir, :outputPrefix, :outputName, :outputExtension, :options, :pathToProjectRoot, :configurationName, :configurations, :currentConfig
+	attr_accessor :type, :buildDir, :objectDir, :outputPrefix, :outputName, :outputExtension, :options, :pathToProjectRoot, :configurationName, :configurations, :currentConfig, :project_path
 
 	def initialize(name)
 		@name = name

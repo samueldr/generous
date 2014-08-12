@@ -60,6 +60,18 @@ def mergeConfig old, new
   end
 end
 
+def process_erb value
+  if value.is_a? String
+    ERB.new(value).result(binding)
+  elsif value.is_a? Array
+    value.map! do |v|
+      process_erb v
+    end
+  else
+    value
+  end
+end
+
 def includeConfig configName, configurations
 	  config  = configurations[configName]
     config = {'include' => configName.split(',')} if config.nil?
@@ -152,13 +164,7 @@ def addArtifact artifactName, artifactValues, project
 			artifact = $options.generator.process_artifact artifactType, artifactValue
 			project.add_artifact artifact
 		else
-			if artifactValue.is_a? String
-			artifactValue = ERB.new(artifactValue).result(binding)
-			elsif artifactValue.is_a? Array
-				artifactValue.map! do |value|
-					ERB.new(value).result(binding)
-				end
-			end
+			artifactValue = process_erb artifactValue
 			project.add_artifact artifactType.new(artifactValue)
 		end
 	end
@@ -289,8 +295,8 @@ end
 configFile.each do |projectName, projectConfigFile|
 
 	project = Project.new projectName
-
-
+  $project = project
+  $project.project_path = $options.project_path
 
 
 		#project.pathToProjectRoot = $pathToProjectRoot
@@ -445,7 +451,7 @@ configFile.each do |projectName, projectConfigFile|
 	puts "Generating a project using #{$options.generator.class} generator."
 	$options.generator.generate project
 
-  Dir.chdir $options.project_path
+  Dir.chdir $project.project_path
 
   if currentConfig.has_key? 'postGenerousScripts'
     currentConfig['postGenerousScripts'].each do |script|
