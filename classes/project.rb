@@ -1,29 +1,46 @@
 class Project
 	attr_reader :name
-	attr_reader :artifacts, :defines, :cppFiles, :headerFiles, :includeDirectories, :library
+	attr_reader :artifacts, :artifactsGroup #, :defines, :cppFiles, :headerFiles, :includeDirectories, :library
 	attr_accessor :type, :buildDir, :objectDir, :outputPrefix, :outputName, :outputExtension, :options, :pathToProjectRoot, :configurationName, :configurations, :currentConfig
 
 	def initialize(name)
 		@name = name
-		@defines            = []
-		@cppFiles           = []
-		@headerFiles        = []
-		@includeDirectories = []
-		@library          = []
-		@framework          = []
-		@librariesPath     = []
-		@optionArtifacts = []
-		@LDFLags = []
-		@CFLags = []
-		@CXXFLags = []
+		# @defines            = []
+		# @cppFiles           = []
+		# @headerFiles        = []
+		# @includeDirectories = []
+		# @library          = []
+		# @framework          = []
+		# @librariesPath     = []
+		# @LDFLags = []
+		# @CFLags = []
+		# @CXXFLags = []
 
+    resetArtifacts
+
+    @optionList = []
 		@options = {}
 		@pathToProjectRoot = ""
 	end
 
+  def resetArtifacts
+    @artifacts = []
+    @artifactsGroup = OpenStruct.new
+    @artifactsGroup.defines = []
+    @artifactsGroup.cppFiles = []
+    @artifactsGroup.headerFiles = []
+    @artifactsGroup.includeDirectories = []
+    @artifactsGroup.library = []
+    @artifactsGroup.framework = []
+    @artifactsGroup.librariesPath = []
+    @artifactsGroup.LDFLags = []
+    @artifactsGroup.CFLags = []
+    @artifactsGroup.CXXFLags = []
+  end
+
 	def includesString
 		includeSring = ""
-		@includeDirectories.each do |include|
+    @artifactsGroup.includeDirectories.each do |include|
 			includeSring += "#{include.includeString} "
 		end
 		includeSring.rstrip
@@ -31,7 +48,7 @@ class Project
 
 	def frameworksString
 		frameworksString = ""
-		@framework.each do |framework|
+    @artifactsGroup.framework.each do |framework|
 			frameworksString += "#{framework.frameworkString} "
 		end
 		frameworksString.rstrip
@@ -39,22 +56,22 @@ class Project
 
 	def librariesString
 		librariesString = ""
-		@library.each do |library|
+    @artifactsGroup.library.each do |library|
 			librariesString += "#{library.libraryString} "
 		end
 		librariesString.rstrip
 	end
 
 	def LDFLAGS_string
-		getFlagString @LDFLags
+		getFlagString @artifactsGroup.LDFLags
 	end
 
 	def CFLAGS_string
-		getFlagString @CFLags
+		getFlagString @artifactsGroup.CFLags
 	end
 
 	def CXXFLAGS_string
-		getFlagString @CXXFLags
+		getFlagString @artifactsGroup.CXXFLags
 	end
 
 	def getFlagString flagList
@@ -67,7 +84,7 @@ class Project
 
 	def librariesPathsString prefix = '.'
 		librariesPathsString = ""
-		@librariesPath.each do |librariesPath|
+    @artifactsGroup.librariesPath.each do |librariesPath|
 			librariesPathsString += "#{librariesPath.librariesPathString prefix} "
 		end
 		librariesPathsString.rstrip
@@ -75,7 +92,7 @@ class Project
 
 	def definesString
 		defineString = ""
-		@defines.each do |define|
+    @artifactsGroup.defines.each do |define|
 			defineString += "#{define.defineString} "
 		end
 		defineString.rstrip
@@ -90,30 +107,28 @@ class Project
 
 			if artifact.is_a? Artifacts::FileBasedArtifact
 				if artifact.is_a? Artifacts::Cpp
-					cppFiles << artifact
+          @artifactsGroup.cppFiles << artifact
 				elsif artifact.is_a? Artifacts::Header
-					headerFiles << artifact
+          @artifactsGroup.headerFiles << artifact
 				end
 			elsif artifact.is_a? Artifacts::CompilerConfigurationArtifact
 				if artifact.is_a? Artifacts::Define
-					defines << artifact
+          @artifactsGroup.defines << artifact
 				elsif artifact.is_a? Artifacts::Library
-					@library << artifact
+          @artifactsGroup.library << artifact
 				elsif artifact.is_a? Artifacts::LibrariesPath
-					@librariesPath << artifact
+          @artifactsGroup.librariesPath << artifact
 				elsif artifact.is_a? Artifacts::Framework
-					@framework << artifact
+          @artifactsGroup.framework << artifact
 				elsif artifact.is_a? Artifacts::CFLAGS
-					@CFLags << artifact
+          @artifactsGroup.CFLags << artifact
 				elsif artifact.is_a? Artifacts::CXXFLAGS
-					@CXXFLags << artifact
+          @artifactsGroup.CXXFLags << artifact
 				elsif artifact.is_a? Artifacts::LDFLAGS
-					@LDFLags << artifact
+          @artifactsGroup.LDFLags << artifact
 				elsif artifact.is_a? Artifacts::IncludesPath
-					includeDirectories << artifact
+          @artifactsGroup.includeDirectories << artifact
 				end
-			elsif artifact.is_a? Artifacts::Option
-				@optionArtifacts << artifact
 			end
 
 		@artifacts ||= []
@@ -121,7 +136,7 @@ class Project
 	end
 
 	def setDefaultOptions
-			@optionArtifacts.each do |option|
+    @optionList.each do |option|
 				@options[option.option] = option.defaultValue
 			end
 	end
@@ -130,13 +145,15 @@ class Project
 		OptionParser.new do |opts|
 			opts.separator ''
 			opts.separator 'Project options'
-			@optionArtifacts.each do |option|
+      @optionList.each do |option|
 				if option.booleanOption
 					opts.on("--#{option.option}", "#{option.description}") do |generatorName|
 						@options[option.option] = generatorName if generatorName
 					end
-				else
-					opts.on("--#{option.option}", "=#{option.option}", "#{option.description}") do |generatorName|
+        else
+          desc = "#{option.description}"
+          desc = "#{desc}  -- Default: #{option.defaultValue}" if option.defaultValue
+					opts.on("--#{option.option}", "=#{option.option}", desc) do |generatorName|
 						@options[option.option] = generatorName if generatorName
 					end
 				end
@@ -157,5 +174,26 @@ class Project
 		outputFile = "#{outputPrefix}#{@outputName}"
 		outputFile += ".#{@outputExtension}" if @outputExtension and @outputExtension != ''
 		outputFile
-	end
+  end
+
+
+  def add_option_from_array option
+    @optionList << Option.new(option)
+  end
+
+  class Option
+    attr_reader :option, :defaultValue, :description, :booleanOption
+
+    def initialize(option)
+      @option = option[0]
+      @description = option[1]
+      if option[3]
+        @defaultValue = false
+        @booleanOption = true
+      else
+        @defaultValue = option[2]
+        @booleanOption = false
+      end
+    end
+  end
 end

@@ -17,25 +17,6 @@ module Artifacts
 		end
 	end
 
-	class PreGenerousScript < ScriptArtifact
-
-	end
-
-	class Option < Artifact
-		attr_reader :option, :defaultValue, :description, :booleanOption
-
-		def initialize(option)
-			@option = option[0]
-			@description = option[1]
-			if option[2]
-				@defaultValue = option[2]
-				@booleanOption = false
-			else
-				@defaultValue = false
-				@booleanOption = true
-			end
-		end
-	end
 
 	class FileBasedArtifact < Artifact
 		attr_reader :fileName
