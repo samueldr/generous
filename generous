@@ -61,7 +61,8 @@ def mergeConfig old, new
 end
 
 def includeConfig configName, configurations
-	config  = configurations[configName]
+	  config  = configurations[configName]
+    config = {'include' => configName.split(',')} if config.nil?
 		if config.has_key? 'include'
 			temp =  {}
 			config['include'].each do |includedName|
@@ -179,7 +180,8 @@ $options = OpenStruct.new(
 	:list_config_options => false,
   :list_exported_config => false,
   :list_all_config => false,
-  :project_path => Dir.pwd
+  :project_path => Dir.pwd,
+  :build_dir => nil
 )
 $pathToProjectRoot = ''
 
@@ -211,7 +213,13 @@ $pathToProjectRoot = ''
 			$options.project_file = file
 			$pathToProjectRoot = File.dirname file
 			$pathToProjectRoot += '/' if $pathToProjectRoot != ''
-		end
+    end
+
+    opts.on('-b', '--build-dir', '=DIR' 'Set the build directoryt') do |build_dir|
+      $options.build_dir = build_dir
+
+    end
+
 		opts.on('-c','--config','=CONFIGS', 'The configuration to use when outputting.',
 		                                    'Defaults to the one specified by the defaultConfiguration or the first one.') do |config|
 			$options.current_config = config
@@ -222,6 +230,8 @@ $pathToProjectRoot = ''
       $options.show_banner = false
 
     end
+
+
 
     opts.on('--list-all-config', 'Prints a list of all configurations.') do
       $options.list_all_config = true
@@ -358,8 +368,10 @@ configFile.each do |projectName, projectConfigFile|
 	end
 
 
-				#set the buildDir
-		if currentConfig.has_key? 'buildDir'
+		#set the buildDir
+		if $options.build_dir
+      project.buildDir = $options.build_dir
+    elsif currentConfig.has_key? 'buildDir'
 			project.buildDir = currentConfig['buildDir']
 		elsif projectConfigFile.has_key? 'buildDir'
 			project.buildDir = projectConfigFile['buildDir']
