@@ -24,7 +24,7 @@ module Generators
 			end
 
 			defines            = []
-			cFiles           = []
+			cFiles             = []
 			cppFiles           = []
 			headerFiles        = []
 			includeDirectories = []
@@ -65,6 +65,18 @@ module Generators
 				file.puts "LIBRARIES_PATHS = #{project.librariesPathsString}"
 
 				space file, 2
+				file.puts "C_SOURCE_FILES = \\"
+				cFiles.each do |f|
+					file.puts "#{f.fileName} \\"
+				end
+				space file, 1
+
+				file.puts "CPP_SOURCE_FILES = \\"
+				cppFiles.each do |f|
+					file.puts "#{f.fileName} \\"
+				end
+
+				space file, 2
 				file.puts 'CPP_OBJECT_FILES = \\'
 			cppFiles.each do |f|
 				file.puts "#{f.objectFileName} \\"
@@ -98,6 +110,27 @@ module Generators
 				file.puts "	rm -rf #{project.buildDir}/#{project.outputFile}"
 				file.puts "	rm -rf #{project.objectDir}/*"
 
+				# C header dependency generation
+				space file, 2
+				file.puts "# C header dependency generation"
+				file.puts <<-EOF
+depend: #{project.buildDir}/depend.d
+
+#{project.buildDir}/depend.d: $(CPP_SOURCE_FILES) $(C_SOURCE_FILES)
+		@echo "----- Building headers dependency list. ----"
+		echo "# Header dependencies " > "#{project.buildDir}/depend.d";
+		@echo "Command truncated..."
+		@$(foreach F,$^,$(CC) $(CXXFLAGS) $(CFLAGS) $(DEFINES) $(INCLUDES) -MM -MQ "#{project.objectDir}/$(notdir $(F))" "$(F)" >> #{project.buildDir}/depend.d ;)
+		sed -i -e 's/\\..*:/.o:/' "#{project.buildDir}/depend.d"
+		@echo
+
+cleandeps:
+		rm "#{project.buildDir}/depend.d";
+
+-include #{project.buildDir}/depend.d
+				EOF
+
+				# Main output artifact
 				space file, 2
 
 				file.puts "#{project.buildDir}/#{project.outputFile}: #{project.objectDir} $(addprefix #{project.objectDir}/,$(CPP_OBJECT_FILES)) $(addprefix #{project.objectDir}/,$(C_OBJECT_FILES))"
