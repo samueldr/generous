@@ -84,6 +84,12 @@ def includeConfig configName, configurations
 				 includedName = includedName[0]
 			end
 			included = configurations[includedName]
+
+      if included.nil? then
+        puts "Invalid configuration name: #{includedName}"
+        exit 1
+      end
+
 			included = includeConfig includedName, configurations	 if included.has_key? 'include'
 			if not @config_included.include? includedName then
 				@config_included << includedName
@@ -215,13 +221,13 @@ $pathToProjectRoot = ''
 
 		opts.separator ""
 		opts.separator 'Project generation options'
-		opts.on('--project-file', '=FILENAME', 'Project file to use.', "Default: #{DEFAULT_PROJECT_FILE}") do |file|
+		opts.on('-p', '--project-file', '=FILENAME', 'Project file to use.', "Default: #{DEFAULT_PROJECT_FILE}") do |file|
 			$options.project_file = file
 			$pathToProjectRoot = File.dirname file
 			$pathToProjectRoot += '/' if $pathToProjectRoot != ''
     end
 
-    opts.on('-b', '--build-dir', '=DIR' 'Set the build directoryt') do |build_dir|
+    opts.on('-b','--build-dir','=DIR', 'Set the build directory.') do |build_dir|
       $options.build_dir = build_dir
 
     end
