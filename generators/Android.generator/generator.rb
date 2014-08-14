@@ -9,6 +9,7 @@ module Generators
 		end
 
 		def process_artifact artifactType, artifactValue
+      artifactValue = process_erb artifactValue
 			return artifactType.new artifactValue
 		end
 
@@ -133,12 +134,12 @@ module Generators
 				end
 				File.open('AndroidManifest.xml', "w").puts androidManifest
 
-			android_libraries_cmd = ''
-
-			android_libraries.each do |lib|
-				android_libraries_cmd = "#{android_libraries_cmd} --library #{lib}"
-			end
-			system("#{$options.android_sdk}/tools/android update project --target #{$options.android_target} --path . --name #{project.name} #{android_libraries_cmd}")
+      FileUtils.rm "project.properties" if File.exist?("project.properties")
+      android_libraries_cmd = ''
+	  	android_libraries.each do |lib|
+        system("#{$options.android_sdk}/tools/android update project --target #{$options.android_target} --path . --name #{project.name} --library #{lib}")
+      end
+      system("#{$options.android_sdk}/tools/android update project --target #{$options.android_target} --path . --name #{project.name}")
 			FileUtils.mkdir_p 'jni'
 
 

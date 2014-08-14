@@ -37,8 +37,44 @@ end
 
 @config_included = []
 
+def mergeConfig old, new
+  if old.is_a? Array then
+    old.concat new
+  elsif old.is_a? Hash then
+    old.merge new do |oldkey, oldConfig, newConfig|
+      if oldConfig.is_a? Hash
+        newConfig.each do |key, value|
+          if oldConfig.has_key? key then
+            oldConfig[key].concat value
+          else
+            oldConfig[key] = value
+          end
+        end
+        oldConfig
+      else
+        oldConfig.concat newConfig
+      end
+    end
+  else
+    nil
+  end
+end
+
+def process_erb value
+  if value.is_a? String
+    ERB.new(value).result(binding)
+  elsif value.is_a? Array
+    value.map! do |v|
+      process_erb v
+    end
+  else
+    value
+  end
+end
+
 def includeConfig configName, configurations
-	config  = configurations[configName]
+	  config  = configurations[configName]
+    config = {'include' => configName.split(',')} if config.nil?
 		if config.has_key? 'include'
 			temp =  {}
 			config['include'].each do |includedName|
@@ -48,6 +84,12 @@ def includeConfig configName, configurations
 				 includedName = includedName[0]
 			end
 			included = configurations[includedName]
+
+      if included.nil? then
+        puts "Invalid configuration name: #{includedName}"
+        exit 1
+      end
+
 			included = includeConfig includedName, configurations	 if included.has_key? 'include'
 			if not @config_included.include? includedName then
 				@config_included << includedName
@@ -57,21 +99,8 @@ def includeConfig configName, configurations
 							#When merging, we will always keep the original name.
 							when 'name'
 								old
-							when 'artifacts', 'postScriptArtifacts'
-								old.merge new do |oldkey, oldArtifact, newArtifact|
-									if oldArtifact.is_a? Hash
-										newArtifact.each do |key, value|
-											if oldArtifact.has_key? key then
-												oldArtifact[key].concat value
-											else
-												oldArtifact[key] = value
-											end
-										end
-										oldArtifact
-									else
-										oldArtifact.concat newArtifact
-									end
-								end
+							when 'options', 'artifacts', 'preGenerousScripts', 'postGenerousScripts'
+                mergeConfig old, new
 							when 'include'
 
 							else
@@ -97,6 +126,15 @@ def includeConfig configName, configurations
 			#config = temp
 		end
 	config
+end
+
+def process_artifacts project, config
+  project.resetArtifacts
+  if config['artifacts']
+    config['artifacts'].each do |artifactName, artifactValues|
+      addArtifact artifactName, artifactValues, project if not artifactValues.nil?
+    end
+  end
 end
 
 def addArtifact artifactName, artifactValues, project
@@ -132,13 +170,7 @@ def addArtifact artifactName, artifactValues, project
 			artifact = $options.generator.process_artifact artifactType, artifactValue
 			project.add_artifact artifact
 		else
-			if artifactValue.is_a? String
-			artifactValue = ERB.new(artifactValue).result(binding)
-			elsif artifactValue.is_a? Array
-				artifactValue.map! do |value|
-					ERB.new(value).result(binding)
-				end
-			end
+			artifactValue = process_erb artifactValue
 			project.add_artifact artifactType.new(artifactValue)
 		end
 	end
@@ -157,12 +189,15 @@ $options = OpenStruct.new(
 	:project_file   => DEFAULT_PROJECT_FILE,
 	:current_config => nil,
 	:generator      => nil,
-	:list_config_options => false
+	:list_config_options => false,
+  :list_exported_config => false,
+  :list_all_config => false,
+  :project_path => Dir.pwd,
+  :build_dir => nil
 )
 $pathToProjectRoot = ''
 
 
-# TODO: Find a way to have generators add options to this.
 	@optionParser = OptionParser.new do |opts|
 		opts.banner =  "Usage : #{File.basename $PROGRAM_NAME} [OPTION] [-- [GENRATOR OPTION]] [-- [PROJECT OPTION]]"
 		opts.separator 'Generates a project based on the configuration passed.'
@@ -186,19 +221,39 @@ $pathToProjectRoot = ''
 
 		opts.separator ""
 		opts.separator 'Project generation options'
-		opts.on('--project-file', '=FILENAME', 'Project file to use.', "Default: #{DEFAULT_PROJECT_FILE}") do |file|
+		opts.on('-p', '--project-file', '=FILENAME', 'Project file to use.', "Default: #{DEFAULT_PROJECT_FILE}") do |file|
 			$options.project_file = file
 			$pathToProjectRoot = File.dirname file
 			$pathToProjectRoot += '/' if $pathToProjectRoot != ''
-		end
+    end
+
+    opts.on('-b','--build-dir','=DIR', 'Set the build directory.') do |build_dir|
+      $options.build_dir = build_dir
+
+    end
+
 		opts.on('-c','--config','=CONFIGS', 'The configuration to use when outputting.',
 		                                    'Defaults to the one specified by the defaultConfiguration or the first one.') do |config|
 			$options.current_config = config
-		end
+    end
+
+    opts.on('-C', '--list-config', 'Prints a list of exported configurations.') do
+      $options.list_exported_config = true
+      $options.show_banner = false
+
+    end
+
+
+
+    opts.on('--list-all-config', 'Prints a list of all configurations.') do
+      $options.list_all_config = true
+      $options.show_banner = false
+
+    end
 
 		opts.separator ''
 		opts.separator 'Generator options'
-		opts.on('--list-generators', 'Prints a list of available generators.') do
+		opts.on('-G', '--list-generators', 'Prints a list of available generators.') do
 			puts 'List of available generators:'
 			Generators.list_classes.each do |g|
 				puts "  #{g}"
@@ -219,12 +274,9 @@ $pathToProjectRoot = ''
 
 @optionParser.permute!
 $options.generator = Generators.get_generator('Makefile').new if $options.generator == nil
-
 $options.generator.permute! if 	$options.generator
 
 
-
-## This will show the banner.
 showBanner
 
 
@@ -249,8 +301,8 @@ end
 configFile.each do |projectName, projectConfigFile|
 
 	project = Project.new projectName
-
-
+  $project = project
+  $project.project_path = $options.project_path
 
 
 		#project.pathToProjectRoot = $pathToProjectRoot
@@ -328,8 +380,10 @@ configFile.each do |projectName, projectConfigFile|
 	end
 
 
-				#set the buildDir
-		if currentConfig.has_key? 'buildDir'
+		#set the buildDir
+		if $options.build_dir
+      project.buildDir = $options.build_dir
+    elsif currentConfig.has_key? 'buildDir'
 			project.buildDir = currentConfig['buildDir']
 		elsif projectConfigFile.has_key? 'buildDir'
 			project.buildDir = projectConfigFile['buildDir']
@@ -347,62 +401,69 @@ configFile.each do |projectName, projectConfigFile|
 
 
 
-	###############################################################################
-	# Artifacts handling                                                          #
-	###############################################################################
+  if currentConfig.has_key? 'options'
+    currentConfig['options'].each do |option|
+      option[2] = ERB.new(option[2]).result(binding) if option[2].is_a? String
+      project.add_option_from_array option
+    end
+  end
 
-	#TODO: Check other parameters passing in Artifacts... Right now it's a dumb array with [0] being filename, [1] being mask. When not a dumb array (thus, a string) it is converted in that format...
-	#The first one is technically the default one.
-	#TODO: Read which configuration to use
-	#TODO: Configuration names (required?)
+  begin
+    project.parse!
+  rescue OptionParser::InvalidOption => e
+    $stderr.puts "Error while parsing command-line input."
+    $stderr.puts e.message.capitalize!
+    exit 1
+  end
 
-	# Here I work out the artifacts.
+  if $options.list_exported_config or $options.list_all_config then
 
+    if $options.list_exported_config then
+      puts 'List of exported configurations:'
+    else
+      puts 'List of all configurations:'
+    end
+    project.configurations.each do |configName, config|
+      puts configName if config['export'] or $options.list_all_config
+    end
+    exit 0
+  end
 
-	if currentConfig['artifacts']
-	currentConfig['artifacts'].each do |artifactName, artifactValues|
-		addArtifact artifactName, artifactValues, project if not artifactValues.nil?
-	end
-
-
-	if $options.list_config_options
-		project.list_options
-		exit 0
-	end
-
-	begin
-		project.parse!
-	rescue OptionParser::InvalidOption => e
-		$stderr.puts "Error while parsing command-line input."
-		$stderr.puts e.message.capitalize!
-		exit 1
-	end
-
-	config = currentConfig
-	if config['artifacts']['PreGenerousScript']
-		puts "Executing PreGenerousScript"
-		config['artifacts']['PreGenerousScript'].each do |script|
-			eval(script)
-		end
-	end
-	currentConfig =config
-
-	end
-
-	if currentConfig['postScriptArtifacts']
-		currentConfig['postScriptArtifacts'].each do |artifactName, artifactValues|
-			addArtifact artifactName, artifactValues, project
-		end
-	end
+  if $options.list_config_options
+    project.list_options
+    exit 0
+  end
 
 
-	unless $options.generator
+  process_artifacts project, currentConfig      #we process the artifacts a first time to get correct compiler strings for the scripts
+
+  if currentConfig.has_key? 'preGenerousScripts'
+    currentConfig['preGenerousScripts'].each do |script|
+      eval(script)
+    end
+  end
+
+  process_artifacts project, currentConfig
+
+  config = currentConfig
+
+
+
+  unless $options.generator
 		$stderr.puts 'A generator has not been selected.'
 		$stderr.puts 'Please select a generator.'
 		exit 1
 	end
 	puts "Generating a project using #{$options.generator.class} generator."
 	$options.generator.generate project
+
+  Dir.chdir $project.project_path
+
+  if currentConfig.has_key? 'postGenerousScripts'
+    currentConfig['postGenerousScripts'].each do |script|
+      eval(script)
+    end
+  end
 
 end
 
