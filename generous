@@ -101,7 +101,7 @@ def includeConfig configName, configurations
 								old
 							when 'options', 'artifacts', 'preGenerousScripts', 'postGenerousScripts'
                 mergeConfig old, new
-							when 'include'
+							when 'include', 'export'
 
 							else
 								old = $options.generator.merge_config k, old, new
