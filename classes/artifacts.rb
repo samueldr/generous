@@ -98,10 +98,14 @@ module Artifacts
 
 
 	class LibrariesPath < FileBasedCompilerConfigurationArtifact
-		def librariesPathString prefix = '.'
+		def librariesPathString prefix = ''
 			#prefix ||= '.'
 			librariesPathString = ""
+      if prefix != '' then
 			librariesPathString += "-L#{prefix}/#{@value}"
+      else
+        librariesPathString += "-L#{@value}"
+      end
 			librariesPathString
 		end
 	end

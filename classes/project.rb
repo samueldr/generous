@@ -82,7 +82,7 @@ class Project
 		flags.rstrip
 	end
 
-	def librariesPathsString prefix = '.'
+	def librariesPathsString prefix = ''
 		librariesPathsString = ""
     @artifactsGroup.librariesPath.each do |librariesPath|
 			librariesPathsString += "#{librariesPath.librariesPathString prefix} "
