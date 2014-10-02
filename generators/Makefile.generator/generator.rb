@@ -110,6 +110,7 @@ module Generators
 				file.puts "	rm -rf #{project.buildDir}/#{project.outputFile}"
 				file.puts "	rm -rf #{project.objectDir}/*"
 
+=begin
 				# C header dependency generation
 				space file, 2
 				file.puts "# C header dependency generation"
@@ -129,6 +130,7 @@ cleandeps:
 
 -include #{project.buildDir}/depend.d
 				EOF
+=end
 
 				# Main output artifact
 				space file, 2
