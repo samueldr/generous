@@ -1,3 +1,5 @@
+require_relative 'makefile_artifacts'
+
 module Generators
 	class Makefile
 
@@ -11,6 +13,12 @@ module Generators
 
 		def permute!
 		end
+
+
+    def process_artifact artifactType, artifactValue
+      artifactValue = process_erb artifactValue
+      return artifactType.new artifactValue
+    end
 
 		def space(file, spaceCount =5)
 			for i in 1..spaceCount
@@ -29,7 +37,7 @@ module Generators
 			headerFiles        = []
 			includeDirectories = []
 			libraries          = []
-
+      finalDependencies = ""
 			# Getting the structure in that form I want
 			project.artifacts.each do |art|
 				if art.is_a? Artifacts::FileBasedArtifact
@@ -47,7 +55,9 @@ module Generators
 						libraries << art
 					elsif art.is_a? Artifacts::IncludesPath
 						includeDirectories << art.value
-					end
+          end
+        elsif art.is_a? Artifacts::FinalDependency
+          finalDependencies = "#{finalDependencies} #{art.value}"
 				end
 			end
 
@@ -135,7 +145,7 @@ cleandeps:
 				# Main output artifact
 				space file, 2
 
-				file.puts "#{project.buildDir}/#{project.outputFile}: #{project.objectDir} $(addprefix #{project.objectDir}/,$(CPP_OBJECT_FILES)) $(addprefix #{project.objectDir}/,$(C_OBJECT_FILES))"
+				file.puts "#{project.buildDir}/#{project.outputFile}: #{finalDependencies} #{project.objectDir} $(addprefix #{project.objectDir}/,$(CPP_OBJECT_FILES)) $(addprefix #{project.objectDir}/,$(C_OBJECT_FILES))"
 				case project.type
 					when "library-static"
 						file.puts "	$(AR) -rcs #{project.buildDir}/#{project.outputFile} $(addprefix #{project.objectDir}/,$(CPP_OBJECT_FILES)) $(addprefix #{project.objectDir}/,$(C_OBJECT_FILES))"
