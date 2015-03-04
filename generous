@@ -447,9 +447,20 @@ configFile.each do |projectName, projectConfigFile|
   process_artifacts project, currentConfig      #we process the artifacts a first time to get correct compiler strings for the scripts
 
   if currentConfig.has_key? 'preGenerousScripts'
+	puts "Executing preGenerousScripts for #{project.configurationName}..."
+	i = 0
     currentConfig['preGenerousScripts'].each do |script|
-      eval(script)
+	  i += 1
+      puts "Script #{i}/#{currentConfig['preGenerousScripts'].length}"
+	  begin
+	      eval(script)
+	  rescue Exception => e
+		  print "\n"
+		  pp e
+		  exit 1
+	  end
     end
+	print "\n"
   end
 
   process_artifacts project, currentConfig
