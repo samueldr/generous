@@ -29,11 +29,11 @@ module Artifacts
 
 	class NativeCompilableArtifact < FileBasedArtifact
 		def objectFileName
-			temp  = @fileName
-			temp = temp.split '/'
-			temp = temp.last.split '.'
-			temp[1] = 'o'
-			temp.join '.'
+			temp_path  = @fileName
+			temp_path = temp_path.split '/'
+			temp_filename = temp_path.last.split '.'
+			temp_filename[-1] = 'o'
+			temp_filename.join '.'
 		end
 	end
 
