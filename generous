@@ -397,7 +397,7 @@ configFile.each do |projectName, projectConfigFile|
 		elsif projectConfigFile.has_key? 'buildDir'
 			project.buildDir = projectConfigFile['buildDir']
 		else
-			project.buildDir = "build/#{configName}"
+			project.buildDir = "build/#{project.name}/#{configName}"
 		end
 	#set the objectDir
 	if currentConfig.has_key? 'objectDir'
