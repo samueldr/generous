@@ -88,9 +88,9 @@ module Generators
 
 				space file, 2
 				file.puts 'CPP_OBJECT_FILES = \\'
-			cppFiles.each do |f|
-				file.puts "#{f.objectFileName} \\"
-			end
+				cppFiles.each do |f|
+					file.puts "#{f.objectFileName} \\"
+				end
 				space file, 1
 
 				file.puts 'C_OBJECT_FILES = \\'
@@ -168,8 +168,9 @@ cleandeps:
 				headerDirectory = File.dirname f.fileName
 					file.puts "	mkdir -p \"#{project.buildDir}/#{headerDirectory}\" && cp \"$<\" \"$@\""
 					space file, 1
-
 				end
+
+				
 
 				cppFiles.each do |f|
 					file.puts "#{project.objectDir}/#{f.objectFileName}: #{f.fileName}"
