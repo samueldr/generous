@@ -50,5 +50,4 @@ module Generators
 
 		generators
 	end
-
 end

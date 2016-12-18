@@ -6,5 +6,4 @@ module Artifacts
 			@value = value
 		end
 	end
-
 end

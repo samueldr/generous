@@ -6,11 +6,6 @@ module Generators
 		end
 
 		def initialize
-			#If I were intelligent, I would parse the left options in $ARGV.
-			#I have the freedom to parse those with whatever I like.
-			#Do not that for inclusion in the main generous tree, you will need to
-			#parse your options with something already available, no additional
-			#libraries needed.
 		end
 
 		def generate project
@@ -79,8 +74,6 @@ module Generators
 				file.puts "echo Linking..."
 				file.puts "ar cr build/libtemp.a #{outfiles.join(" ")}"
 			end
-
 		end
 	end
-
 end

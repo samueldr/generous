@@ -1,13 +1,9 @@
-#TODO: More powerful artifacts?
-
 module Artifacts
 
 	class Artifact
-
 	end
 
 	class GeneratorArtifact < Artifact
-
 	end
 
 	class ScriptArtifact < Artifact
@@ -17,13 +13,11 @@ module Artifacts
 		end
 	end
 
-
 	class FileBasedArtifact < Artifact
 		attr_reader :fileName
 
 		def initialize(name)
 			@fileName = name
-			#@originalFileName = originalFileName
 		end
 	end
 
@@ -38,17 +32,13 @@ module Artifacts
 	end
 
 	class C < NativeCompilableArtifact
-
 	end
 
 	class Cpp < NativeCompilableArtifact
-
 	end
+
 	class Header < FileBasedArtifact
-
 	end
-
-
 
 	class CompilerConfigurationArtifact < Artifact
 		attr_reader :value
@@ -61,14 +51,14 @@ module Artifacts
 	class Define < CompilerConfigurationArtifact
 		attr_reader :key
 		def initialize(value)
-		if value.is_a? Array
-			@key = value[0]
-			@value = value[1]
-		else
-			@key = value
-			@value = nil
+			if value.is_a? Array
+				@key = value[0]
+				@value = value[1]
+			else
+				@key = value
+				@value = nil
 
-		end
+			end
 		end
 
 		def defineString
@@ -78,48 +68,43 @@ module Artifacts
 			defineString
 		end
 	end
+
 	class FileBasedCompilerConfigurationArtifact < CompilerConfigurationArtifact
 		attr_reader :fileName
+
 		def initialize(name)
 			super(name)
 			@fileName = name
-			#@originalFileName = originalFileName
 		end
 	end
 
-  class IncludesPath < FileBasedCompilerConfigurationArtifact
-  def includeString
-		includeSring = ""
-		includeSring += "-I#{@value}"
-		includeSring
+	class IncludesPath < FileBasedCompilerConfigurationArtifact
+		def includeString
+			includeSring = ""
+			includeSring += "-I#{@value}"
+			includeSring
+		end
 	end
-	end
-
-
 
 	class LibrariesPath < FileBasedCompilerConfigurationArtifact
 		def librariesPathString prefix = ''
-			#prefix ||= '.'
 			librariesPathString = ""
-      if prefix != '' then
-			librariesPathString += "-L#{prefix}/#{@value}"
-      else
-        librariesPathString += "-L#{@value}"
-      end
+			if prefix != '' then
+				librariesPathString += "-L#{prefix}/#{@value}"
+			else
+				librariesPathString += "-L#{@value}"
+			end
 			librariesPathString
 		end
 	end
 
 	class CFLAGS < CompilerConfigurationArtifact
-
 	end
 
 	class CXXFLAGS < CompilerConfigurationArtifact
-
 	end
 
 	class LDFLAGS < CompilerConfigurationArtifact
-
 	end
 
 	class Framework < CompilerConfigurationArtifact
@@ -134,7 +119,7 @@ module Artifacts
 		end
 	end
 
-  class Library < CompilerConfigurationArtifact
+	class Library < CompilerConfigurationArtifact
 		def libraryString
 			libraryString = ""
 			libraryString += "-l#{@value}"
@@ -144,5 +129,5 @@ module Artifacts
 		def fileName
 			"lib#{@value}.a"
 		end
-  end
+	end
 end
