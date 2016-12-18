@@ -52,7 +52,9 @@ def mergeConfig old, new
         end
         oldConfig
       else
-        oldConfig.concat newConfig
+        # Allow empty collections.
+        oldConfig.concat newConfig if newConfig
+        oldConfig
       end
     end
   else
