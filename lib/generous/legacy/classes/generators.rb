@@ -1,9 +1,10 @@
 module Generators
+	GENERATORS_PATH = "/../lib/generous/legacy/generators/"
 	#TODO: Move this elsewhere?
 	if File.symlink?($0)
-		@base_dir = File.dirname(File.readlink($0)) + "/generators/"
+		@base_dir = File.dirname(File.readlink($0)) + GENERATORS_PATH
 	else
-		@base_dir = File.dirname($0) + "/generators/"
+		@base_dir = File.dirname($0) + GENERATORS_PATH
 	end
 
 	def self.get_generator generator_name

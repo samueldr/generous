@@ -5,15 +5,18 @@ require 'ostruct'
 require 'pp'
 require 'yaml'
 require 'fileutils'
+
 # For globmask
-require_relative 'classes/dir'
-
-require_relative 'classes/os'
-
+require 'generous/legacy/classes/dir'
+require 'generous/legacy/classes/os'
 # Project classes
-require_relative 'classes/artifacts'
-require_relative 'classes/project'
-require_relative 'classes/generators'
+require 'generous/legacy/classes/artifacts'
+require 'generous/legacy/classes/project'
+require 'generous/legacy/classes/generators'
+
+# Legacy version number
+# NEVER INCREASE 0.X, IT SHOULD ALWAYS BE 0.1.X
+VERSION = "0.1.2"
 
 # Small utility function to output the lovely banner.
 def showBanner
@@ -23,7 +26,8 @@ def showBanner
   / ___\\_/ __ \\ /    \\_/ __ \\_  __ \\/  _ \\|  |  \\/  ___/
  / /_/  >  ___/|   |  \\  ___/|  | \\(  <_> )  |  /\\___ \\
  \\___  / \\___  >___|  /\\___  >__|   \\____/|____//____  >
-\\_____/      \\/     \\/     \\/   project generator    \\/
+\\_____/      \\/     \\/     \\/   +-> project generator\\/
+                                +------> (Legacy version)
 
 BANNER
 end
@@ -277,6 +281,11 @@ $pathToProjectRoot = ''
 		opts.on('-g','--generator','=GENERATOR', 'The generator to use.', 'Defaults to Makefile.') do |generatorName|
 			$options.generator = Generators.get_generator generatorName
 			$options.generator = $options.generator.new
+		end
+
+		opts.on('--version') do
+			puts "Generous legacy script (#{VERSION})"
+			exit 0
 		end
 
 	end

@@ -1,2 +1,0 @@
-#!/bin/bash
-ruby "$(dirname "${BASH_SOURCE[0]}")/../../generous" $@

@@ -30,28 +30,16 @@ Typical use cases
     adoption.
   * Generating a project file for a project which has none.
 
+Usage
+=====
+
+> *`TODO`: Write a lovely blurb here.*
+
+FAQ
+===
+
 When will it be ready?
 ----------------------
 
-I wouldn't know.
+As if this question could be answered.
 
-Wishlist
--------
-
-* IDE support (in order of priority/Usage in our team)
-  * Visual studio 2010
-  * NetBeans
-  * CodeLite
-  * Code::Blocks
-  * Eclipse
-* Project types
-  * C++
-  * C
-* Support for custom project configuration (Debug, Release, Release With thingamabob, etc)
-
-When a specific version of a software is mentioned, it means that support
-for prior version is not a priority. If supporting it is trivial, it will
-likely be done.
-
-Any IDE or language not listed is not out-of-question. They are just not
-a priority to get this out of the door.
