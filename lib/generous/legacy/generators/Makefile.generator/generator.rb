@@ -13,7 +13,7 @@ module Generators
 		end
 
 		def process_artifact artifactType, artifactValue
-			artifactValue = process_erb artifactValue
+			artifactValue = ConfigParser.process_erb artifactValue
 			return artifactType.new artifactValue
 		end
 

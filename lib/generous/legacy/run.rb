@@ -1,194 +1,23 @@
 #!/usr/bin/env ruby
-require 'erb'
-require 'optparse'
-require 'ostruct'
-require 'pp'
-require 'yaml'
-require 'fileutils'
 
-# For globmask
-require 'generous/legacy/classes/dir'
-require 'generous/legacy/classes/os'
-# Project classes
-require 'generous/legacy/classes/artifacts'
-require 'generous/legacy/classes/project'
-require 'generous/legacy/classes/generators'
+# Basic dependencies.
+require 'ostruct'
+require 'optparse'
+
+# Used to print details on exceptions.
+require 'pp'
+
+require 'generous/legacy/generous'
+# Include everything in the global scope.
+include Generous
+# ERB scripts are using them.
+include Prettify
 
 # Legacy version number
 # NEVER INCREASE 0.X, IT SHOULD ALWAYS BE 0.1.X
 VERSION = "0.1.2"
 
-# Small utility function to output the lovely banner.
-def showBanner
-	return unless $options.show_banner
-	puts <<BANNER
-   ____   ____   ____   ___________  ____  __ __  ______
-  / ___\\_/ __ \\ /    \\_/ __ \\_  __ \\/  _ \\|  |  \\/  ___/
- / /_/  >  ___/|   |  \\  ___/|  | \\(  <_> )  |  /\\___ \\
- \\___  / \\___  >___|  /\\___  >__|   \\____/|____//____  >
-\\_____/      \\/     \\/     \\/   +-> project generator\\/
-                                +------> (Legacy version)
-
-BANNER
-end
-
-
-def puts_banner text, col = 40, char = '*'
-	puts ''.rjust(col, char)
-	puts "*#{text.center(col -2 )}*"
-	puts ''.rjust(col, char)
-end
-
-@config_included = []
-
-def mergeConfig old, new
-	if old.is_a? Array then
-		old.concat new
-	elsif old.is_a? Hash then
-		old.merge new do |oldkey, oldConfig, newConfig|
-			if oldConfig.is_a? Hash
-				newConfig.each do |key, value|
-					if oldConfig.has_key? key then
-						oldConfig[key].concat value
-					else
-						oldConfig[key] = value
-					end
-				end
-				oldConfig
-			else
-				# Allow empty collections.
-				oldConfig.concat newConfig if newConfig
-				oldConfig
-			end
-		end
-	else
-		nil
-	end
-end
-
-def process_erb value
-	if value.is_a? String
-		ERB.new(value).result(binding)
-	elsif value.is_a? Array
-		value.map! do |v|
-			process_erb v
-		end
-	else
-		value
-	end
-end
-
-def includeConfig configName, configurations
-	config  = configurations[configName]
-	# TODO : Add error message when passing a configName not found in configurations
-	# if config is nil...
-	if config == nil then
-		print "Config #{configName} does not seem to exist!\n"
-		print "Aborting!\n"
-		exit 2
-	end
-	config = {'include' => configName.split(',')} if config.nil?
-	if config.has_key? 'include'
-		temp =  {}
-		config['include'].each do |includedName|
-
-			if  includedName.is_a? Array
-				next if not eval(includedName[1])
-				includedName = includedName[0]
-			end
-			included = configurations[includedName]
-
-			if included.nil? then
-				puts "Invalid configuration name: #{includedName}"
-				exit 1
-			end
-
-			included = includeConfig includedName, configurations	 if included.has_key? 'include'
-			if not @config_included.include? includedName then
-				@config_included << includedName
-
-				temp = config.merge included do |k, old, new|
-					case k
-						#When merging, we will always keep the original name.
-					when 'name'
-						old
-					when 'options', 'artifacts', 'preGenerousScripts', 'postGenerousScripts'
-						mergeConfig old, new
-					when 'include', 'export'
-
-					else
-						old = $options.generator.merge_config k, old, new
-						if not old then
-							$stderr.puts "I don't know how to merge these properties...'"
-							$stderr.puts 'TODO: Make this a warning and find a middle ground for merging...'
-							$stderr.puts
-							$stderr.puts '====>' + k
-							$stderr.puts '==old'
-							$stderr.puts old
-							$stderr.puts '==new'
-							$stderr.puts new
-						end
-					end
-				end
-
-				config = temp
-			end
-			temp.delete 'include'
-		end
-
-		#config = temp
-	end
-	config
-end
-
-def process_artifacts project, config
-	project.resetArtifacts
-	if config['artifacts']
-		config['artifacts'].each do |artifactName, artifactValues|
-			addArtifact artifactName, artifactValues, project if not artifactValues.nil?
-		end
-	end
-end
-
-def addArtifact artifactName, artifactValues, project
-	unless Artifacts.const_defined? artifactName
-		raise "Unknown artifact type: #{artifactName}"
-	end
-
-	artifactType = Artifacts.const_get artifactName
-
-	artifactValues.each do |artifactValue|
-
-
-		#TODO: De-hardcode the globbing here... Have some kind of magic for containing the initialization of artifacts through the glob...
-		#TODO: Decouple the initialization of an Artifact from the parsing of the config? (Have the glob be applied while parsing the config instead?)
-		#TODO: Add a Artifacts::PathBase instead of checking for FileBasedArtifact and other path type artifact
-		if artifactType < Artifacts::FileBasedArtifact || artifactType < Artifacts::FileBasedCompilerConfigurationArtifact
-			# When using a simple string, create the right array.
-			if artifactValue.is_a? String or not artifactValue[1] then
-				artifactValue = [artifactValue, []]
-			end
-			artifactValue[0] = ERB.new(artifactValue[0]).result(binding)
-			if artifactValue[1].is_a? Array then
-				artifactValue[0] = "#{$pathToProjectRoot}#{artifactValue[0]}"
-				Dir.globmask(artifactValue[0], artifactValue[1]).each do |file|
-					#originalPath = file.clone
-					#originalPath.slice! "#{$pathToProjectRoot}"
-					project.add_artifact artifactType.new(file)
-				end
-			elsif artifactValue[1] then
-				project.add_artifact artifactType.new(artifactValue[0])
-			end
-		elsif artifactType < Artifacts::GeneratorArtifact
-			artifact = $options.generator.process_artifact artifactType, artifactValue
-			project.add_artifact artifact
-		else
-			artifactValue = process_erb artifactValue
-			project.add_artifact artifactType.new(artifactValue)
-		end
-	end
-end
-
+$config_included = []
 
 ###############################################################################
 # Options and parameters handling                                             #
@@ -219,7 +48,7 @@ $pathToProjectRoot = ''
 	opts.separator 'Global options'
 
 	opts.on('-h', '--help', 'Shows this help.') do
-		showBanner
+		Prettify.show_banner
 		$options.show_banner = false
 		puts opts
 		if $options.generator.respond_to? 'list_options'
@@ -294,8 +123,7 @@ end
 $options.generator = Generators.get_generator('Makefile').new if $options.generator == nil
 $options.generator.permute! if 	$options.generator
 
-
-showBanner
+Prettify.show_banner
 
 
 ###############################################################################
@@ -338,7 +166,7 @@ configFile.each do |projectName, projectConfigFile|
 
 	puts "Running generous for configName: '#{configName}'"
 
-	currentConfig = includeConfig project.configurationName, project.configurations
+	currentConfig = ConfigParser.include_config project.configurationName, project.configurations
 	project.currentConfig = currentConfig
 
 	#set the project type
@@ -455,7 +283,7 @@ configFile.each do |projectName, projectConfigFile|
 	end
 
 
-	process_artifacts project, currentConfig      #we process the artifacts a first time to get correct compiler strings for the scripts
+	ConfigParser.process_artifacts project, currentConfig      #we process the artifacts a first time to get correct compiler strings for the scripts
 
 	if currentConfig.has_key? 'preGenerousScripts'
 		puts "Executing preGenerousScripts for #{project.configurationName}..."
@@ -474,7 +302,7 @@ configFile.each do |projectName, projectConfigFile|
 		print "\n"
 	end
 
-	process_artifacts project, currentConfig
+	ConfigParser.process_artifacts project, currentConfig
 
 	config = currentConfig
 
@@ -498,8 +326,4 @@ configFile.each do |projectName, projectConfigFile|
 
 end
 
-
-
-puts '-----'
-puts 'Done.'
-puts '-----'
+Prettify.puts_banner('Done.')

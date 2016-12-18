@@ -1,3 +1,4 @@
+require 'fileutils'
 require_relative 'android_artifacts'
 require 'nokogiri'
 module Generators
